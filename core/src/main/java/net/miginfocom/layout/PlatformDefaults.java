@@ -282,18 +282,18 @@ public final class PlatformDefaults
 
 	public static int getPlatformDPI(int plaf)
 	{
-		switch (plaf) {
-			case WINDOWS_XP:
-			case GNOME:
-				return 96;
-			case MAC_OSX:
-				try {
-					return java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
-				} catch (Throwable t) {
+		try {
+			return java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
+		} catch (Throwable t) {
+			switch (plaf) {
+				case WINDOWS_XP:
+				case GNOME:
+					return 96;
+				case MAC_OSX:
 					return 72;
-				}
-			default:
-				throw new IllegalArgumentException("Unknown platform: " + plaf);
+				default:
+					throw new IllegalArgumentException("Unknown platform: " + plaf);
+			}
 		}
 	}
 

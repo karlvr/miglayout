@@ -238,7 +238,7 @@ public final class UnitValue implements Serializable
 		this(value, null, unit, true, STATIC, null, null, createString);
 	}
 
-	UnitValue(float value, String unitStr, boolean isHor, int oper, String createString)
+        public UnitValue(float value, String unitStr, boolean isHor, int oper, String createString)
 	{
 		this(value, unitStr, -1, isHor, oper, null, null, createString);
 	}
@@ -345,7 +345,7 @@ public final class UnitValue implements Serializable
 					return isHor ? comp.getMaximumWidth(comp.getHeight()) : comp.getMaximumHeight(comp.getWidth());
 
 				case BUTTON:
-				    return getMinimumButtonWidthIncludingPadding(refValue, parent, comp);
+					return PlatformDefaults.getMinimumButtonWidthIncludingPadding(refValue, parent, comp);
 
 				case LINK_X:
 				case LINK_Y:
@@ -402,16 +402,6 @@ public final class UnitValue implements Serializable
 
 		throw new IllegalArgumentException("Internal: Unknown Oper: " + oper);
 	}
-    
-    public static float getMinimumButtonWidthIncludingPadding(float refValue, ContainerWrapper parent, ComponentWrapper comp)
-    {
-        final int buttonMinWidth = PlatformDefaults.getMinimumButtonWidth().getPixels(refValue, parent, comp);
-        if (PlatformDefaults.getMinimumButtonPadding() != null) {
-            return Math.max(comp.getMinimumWidth(comp.getWidth()) + PlatformDefaults.getMinimumButtonPadding().getPixels(refValue, parent, comp) * 2, buttonMinWidth);
-        } else {
-            return buttonMinWidth;
-        }
-    }
 
 	private float lookup(float refValue, ContainerWrapper parent, ComponentWrapper comp)
 	{

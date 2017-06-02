@@ -123,6 +123,12 @@ public class MigPane extends javafx.scene.layout.Pane
 		// When Scene changes the grid needs to be cleared
 		sceneProperty().addListener(e -> invalidateGrid());
 
+		// invalidate grid and request layout when node orientation changes
+		nodeOrientationProperty().addListener(observable -> {
+			invalidateGrid();
+			requestLayout();
+		});
+
 		// defaults
 		if (layoutConstraints == null) setLayoutConstraints(new LC());
 		if (rowConstraints == null) setRowConstraints(new AC());
@@ -287,6 +293,23 @@ public class MigPane extends javafx.scene.layout.Pane
 		return wrapperToCCMap.get(new FX2ComponentWrapper(node));
 	}
 
+	/** Sets the constraints for the node
+	 * @param node The node. Must already be in the pane.
+	 * @param ccs The component constraints. Can be null.
+	 */
+	public void setComponentConstraints(Node node, String ccs)
+	{
+		FX2ComponentWrapper wrapper = new FX2ComponentWrapper(node);
+		if (!wrapperToCCMap.containsKey(wrapper))
+			throw new IllegalArgumentException("Node not in pane: " + node);
+
+		CC cc = ConstraintParser.parseComponentConstraint(ConstraintParser.prepare(ccs));
+		wrapperToCCMap.put(wrapper, cc);
+
+		invalidateGrid();
+		requestLayout();
+	}
+
 	private LayoutAnimator anim = null;
 
 	// ============================================================================================================
@@ -440,6 +463,9 @@ public class MigPane extends javafx.scene.layout.Pane
 		incLayoutInhibit();
 
 		try {
+			if (layoutConstraints.isNoCache())
+				_grid = null;
+
 			// for debugging System.out.println("MigPane.layoutChildren");
 			Grid lGrid = getGrid();
 
@@ -471,13 +497,29 @@ public class MigPane extends javafx.scene.layout.Pane
 	}
 
 	@Override
-	public void requestLayout() {
+	protected void setWidth(double newWidth)
+	{
+		if (newWidth != getWidth()) {
+			super.setWidth(newWidth);
+			if (_grid != null)
+				_grid.invalidateContainerSize();
+		}
+	}
 
+	@Override
+	protected void setHeight(double newHeight)
+	{
+		if (newHeight != getHeight()) {
+			super.setHeight(newHeight);
+			if (_grid != null)
+				_grid.invalidateContainerSize();
+		}
+	}
+
+	@Override
+	public void requestLayout() {
 		if (layoutInhibits > 0)
 			return;
-
-		if (layoutConstraints.isNoCache())
-			_grid = null;
 
 		biasDirty = true;
 		if (_grid != null)
@@ -568,6 +610,12 @@ public class MigPane extends javafx.scene.layout.Pane
 		retSize = constrain.constrain((int) Math.ceil(retSize), (float) prefSize, parent);
 
 		return constrain.getGapPush() ? Math.max(winSize, retSize) : retSize;
+	}
+
+	@Override
+	public boolean usesMirroring() {
+		// do not use mirroring transformation for right-to-left node orientation
+		return false;
 	}
 
 	// ============================================================================================================
@@ -668,8 +716,12 @@ public class MigPane extends javafx.scene.layout.Pane
 		@Override
 		public FX2ComponentWrapper[] getComponents() {
 			// for debugging System.out.println("MigPane.FX2ContainerWrapper.getComponents " + MigPane.this.componentWrapperList.size());
-//			return wrapperToCCMap.keySet().toArray(new FX2ComponentWrapper[wrapperToCCMap.size()]); // must be in the order of adding!
-			return getManagedChildren().stream().map(node -> new FX2ComponentWrapper(node)).toArray(FX2ComponentWrapper[]::new);
+//			return getManagedChildren().stream().map(node -> new FX2ComponentWrapper(node)).toArray(FX2ComponentWrapper[]::new);
+			List<FX2ComponentWrapper> lFX2ComponentWrappers = new ArrayList<>();
+			for (Node node : getManagedChildren()) {
+				lFX2ComponentWrappers.add(new FX2ComponentWrapper(node));
+			}
+			return lFX2ComponentWrappers.toArray(new FX2ComponentWrapper[]{});
 		}
 
 		@Override
@@ -685,13 +737,7 @@ public class MigPane extends javafx.scene.layout.Pane
 
 		@Override
 		public boolean isLeftToRight() {
-			NodeOrientation ori = getNodeOrientation();
-			if (ori == NodeOrientation.INHERIT) {
-				ContainerWrapper parent = getParent();
-				if (parent != null)
-					return parent.isLeftToRight();
-			}
-			return ori != NodeOrientation.RIGHT_TO_LEFT;
+			return getEffectiveNodeOrientation() != NodeOrientation.RIGHT_TO_LEFT;
 		}
 
 		@Override
